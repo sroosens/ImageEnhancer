@@ -27,7 +27,7 @@ MainWindow::MainWindow(QWidget *parent) :
     m_imageDenoizer.moveToThread(&m_imageDenoizer);
 
     // Connect image rendered to UI
-    (void)QObject::connect(&m_imageDenoizer, SIGNAL(updatedImg(QPixmap)), this, SLOT(updateImage(QPixmap)));
+    (void)QObject::connect(&m_imageDenoizer, SIGNAL(updatedImg(QImage)), this, SLOT(updateImage(QImage)));
 }
 
 
@@ -50,20 +50,20 @@ MainWindow::~MainWindow()
 + Returns    : NONE
 @endverbatim
 ***************************************************************************/
-void MainWindow::updateImage(const QPixmap image)
+void MainWindow::updateImage(const QImage image)
 {
     // Get label dimensions
     int w = ui->labelImgDenoized->width();
     int h = ui->labelImgDenoized->height();
 
     // Store image in local
-    m_denoizedImg = image.toImage();
+    m_denoizedImg = image.copy();
 
     // Enable Save button
     ui->pushButtonSave->setEnabled(true);
 
     // Set a scaled pixmap to a w x h window keeping its aspect ratio
-    ui->labelImgDenoized->setPixmap(image.scaled(w, h, Qt::KeepAspectRatio));
+    ui->labelImgDenoized->setPixmap(QPixmap::fromImage(image.scaled(w, h, Qt::KeepAspectRatio)));
 }
 
 /**
@@ -160,6 +160,7 @@ void MainWindow::on_pushButtonRun_clicked()
 {
     ProcessType type = (ProcessType)ui->comboBoxDenoiseType->currentIndex();
     ProcessParameters params;
+    QImage blank; // Create an Image but it wont be used, we prefer to get the result via the signal from the API
 
     // Check Denoizing type selected and get values
     if( type == TypeGaussianBlur)
@@ -185,7 +186,7 @@ void MainWindow::on_pushButtonRun_clicked()
     }
 
     // Proceed to Denoizing
-    if(!m_imageDenoizer.bDenoize(m_curFileName, type, params))
+    if(!m_imageDenoizer.bApplyDenoize(m_curFileName, type, params))
     {
         QMessageBox::warning(this,"Error",
                              "Error while Denoizing!\n"

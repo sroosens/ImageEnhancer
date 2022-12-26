@@ -18,7 +18,7 @@ public:
     ~MainWindow();
 
 public slots:
-    void updateImage(const QPixmap image);
+    void updateImage(const QImage image);
 
 private slots:
     void on_pushButtonRun_clicked();

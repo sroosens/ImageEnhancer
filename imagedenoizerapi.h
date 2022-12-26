@@ -34,10 +34,16 @@ public:
     ~ImageDenoizeAPI();
 
 public slots:
+    // Thread management
     void start(void) { bRunning = true; QThread::start(); }
     void stop(void) { bRunning = false; QThread::exit(); }
 
-    bool bDenoize(QString file, ProcessType type, ProcessParameters params);
+    // Denoize process
+    bool bApplyDenoize(QString _file, ProcessType _type, ProcessParameters _params);
+    bool bApplyDenoize(QString _file, ProcessType _type, ProcessParameters _params, QImage &_out);
+
+    // Save file
+    bool bSaveImage(QString _file, QImage _image);
 
     // Add other processing functions;
 
@@ -45,11 +51,12 @@ private slots:
     void run();
 
 signals:
-    void updatedImg(const QPixmap &frame);
+    void updatedImg(const QImage &_frame);
 
 private:
-    bool bCheckParams(ProcessType type, ProcessParameters &params);
-    bool bIsOdd(int num);
+    bool bCheckParams(ProcessType _type, ProcessParameters &_params);
+    bool bIsOdd(int _num);
+    bool bDenoize(QString _file, ProcessType _type, ProcessParameters _params, QImage &_output);
 
     bool bRunning;
 };
