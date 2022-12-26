@@ -83,9 +83,6 @@ bool ImageDenoizeAPI::bApplyDenoize(QString _file, ProcessType _type, ProcessPar
     return bOK;
 }
 
-
-
-
 /**
 *************************************************************************
 @verbatim
@@ -112,7 +109,6 @@ bool ImageDenoizeAPI::bSaveImage(QString _file, QImage _image)
         return false;
     }
 }
-
 
 /**
 *************************************************************************

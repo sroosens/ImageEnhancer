@@ -211,7 +211,7 @@ void MainWindow::on_pushButtonSave_clicked()
 {
     QString filename = QFileDialog::getSaveFileName(this, "Save file", QDir::currentPath(), "Images (*.png *.tiff *.jpg)");
 
-    if(m_denoizedImg.save(filename + "." + QFileInfo(m_curFileName).suffix()))
+    if(m_imageDenoizer.bSaveImage(filename + "." + QFileInfo(m_curFileName).suffix(), m_denoizedImg))
     {
         qDebug() << "Denoized file saved!";
     }
