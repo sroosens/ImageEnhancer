@@ -1,4 +1,4 @@
-#include "imagedenoizapi.h"
+#include "imagedenoizerapi.h"
 
 #include <opencv2/opencv.hpp>
 

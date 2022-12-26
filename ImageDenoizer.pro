@@ -16,11 +16,11 @@ DEFINES += QT_DEPRECATED_WARNINGS
 SOURCES += \
         main.cpp \
         mainwindow.cpp \
-    imagedenoizeapi.cpp
+    imagedenoizerapi.cpp
 
 HEADERS += \
         mainwindow.h \
-    imagedenoizapi.h
+    imagedenoizerapi.h
 
 FORMS += \
         mainwindow.ui

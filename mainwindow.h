@@ -3,7 +3,7 @@
 
 #include <QMainWindow>
 
-#include <imagedenoizapi.h>
+#include <imagedenoizerapi.h>
 
 namespace Ui {
 class MainWindow;
