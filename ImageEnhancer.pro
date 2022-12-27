@@ -11,6 +11,8 @@ greaterThan(QT_MAJOR_VERSION, 4): QT += widgets
 TARGET = ImageEnhancer
 TEMPLATE = app
 
+win32:RC_ICONS += photo_icon.ico
+
 DEFINES += QT_DEPRECATED_WARNINGS
 
 SOURCES += \
