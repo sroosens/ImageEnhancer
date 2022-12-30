@@ -21,13 +21,17 @@ MainWindow::MainWindow(QWidget *parent) :
     on_comboBoxDenoiseType_currentIndexChanged(0);
     ui->pushButtonRun->setEnabled(false);
     ui->pushButtonSave->setEnabled(false);
+    ui->horizontalSlider_Brightness->setEnabled(false);
+    ui->horizontalSlider_Constrast->setEnabled(false);
+    disableParamsUI();
 
     // Setup specific thread for image processing
     m_imageDenoizer.start();
     m_imageDenoizer.moveToThread(&m_imageDenoizer);
 
     // Connect image rendered to UI
-    (void)QObject::connect(&m_imageDenoizer, SIGNAL(updatedImg(QImage)), this, SLOT(updateImage(QImage)));
+    (void)QObject::connect(&m_imageDenoizer, SIGNAL(updatedDenoizeImg(QImage)), this, SLOT(updateDenoizeImage(QImage)));
+    (void)QObject::connect(&m_imageDenoizer, SIGNAL(updatedEditedImg(QImage)), this, SLOT(updateEditedImage(QImage)));
 }
 
 
@@ -43,14 +47,14 @@ MainWindow::~MainWindow()
 /**
 *************************************************************************
 @verbatim
-+ updateImage() - Slot called when a new processed image is received.
++ updateDenoizeImage() - Slot called when a new denoized image is received.
 +                 Store the image in local and display it to the UI
 + ----------------
 + Parameters : image    Processed image to store and display
 + Returns    : NONE
 @endverbatim
 ***************************************************************************/
-void MainWindow::updateImage(const QImage image)
+void MainWindow::updateDenoizeImage(const QImage image)
 {
     // Get label dimensions
     int w = ui->labelImgDenoized->width();
@@ -64,6 +68,29 @@ void MainWindow::updateImage(const QImage image)
 
     // Set a scaled pixmap to a w x h window keeping its aspect ratio
     ui->labelImgDenoized->setPixmap(QPixmap::fromImage(image.scaled(w, h, Qt::KeepAspectRatio)));
+}
+
+/**
+*************************************************************************
+@verbatim
++ updateEditedImage() - Slot called when a new edited image is received.
++                 Store the image in local and display it to the UI
++ ----------------
++ Parameters : image    Processed image to store and display
++ Returns    : NONE
+@endverbatim
+***************************************************************************/
+void MainWindow::updateEditedImage(const QImage image)
+{
+    // Get label dimensions
+    int w = ui->labelImgPrevious->width();
+    int h = ui->labelImgPrevious->height();
+
+    // Store image in local
+    m_curImg = image.copy();
+
+    // Set a scaled pixmap to a w x h window keeping its aspect ratio
+    ui->labelImgPrevious->setPixmap(QPixmap::fromImage(image.scaled(w, h, Qt::KeepAspectRatio)));
 }
 
 /**
@@ -113,6 +140,26 @@ void MainWindow::dropEvent(QDropEvent *e)
             // Set a scaled pixmap to a w x h window keeping its aspect ratio
             ui->labelImgPrevious->setPixmap(QPixmap(m_curFileName).scaled(w, h, Qt::KeepAspectRatio));
 
+            // Set local image
+            if(!m_imageDenoizer.bLoadImage(m_curFileName))
+            {
+                QMessageBox::warning(this,"Error",
+                                     "Error while loading image!\n"
+                                     "File path shall be in ASCII standard (no é, è, ê, µ, ¨, ...) \n"
+                                     "File format shall be .jpg, .png, .tiff");
+            }
+            else
+            {
+                // Reset slider values
+                ui->horizontalSlider_Brightness->setValue(100);
+                ui->horizontalSlider_Constrast->setValue(100);
+                // Enable Editing sliders
+                ui->horizontalSlider_Brightness->setEnabled(true);
+                ui->horizontalSlider_Constrast->setEnabled(true);
+                // Enable Denoize sliders
+                on_comboBoxDenoiseType_currentIndexChanged(ui->comboBoxDenoiseType->currentIndex());
+            }
+
             // Enable denoize button
             ui->pushButtonRun->setEnabled(true);
 
@@ -160,7 +207,6 @@ void MainWindow::on_pushButtonRun_clicked()
 {
     ProcessType type = (ProcessType)ui->comboBoxDenoiseType->currentIndex();
     ProcessParameters params;
-    QImage blank; // Create an Image but it wont be used, we prefer to get the result via the signal from the API
 
     // Check Denoizing type selected and get values
     if( type == TypeGaussianBlur)
@@ -186,12 +232,11 @@ void MainWindow::on_pushButtonRun_clicked()
     }
 
     // Proceed to Denoizing
-    if(!m_imageDenoizer.bApplyDenoize(m_curFileName, type, params))
+    if(!m_imageDenoizer.bApplyDenoize(type, params))
     {
         QMessageBox::warning(this,"Error",
                              "Error while Denoizing!\n"
-                             "File path shall be in ASCII standard (no é, è, ê, µ, ¨, ...) \n"
-                             "File format shall be .jpg, .png, .tiff");
+                             "Check parameters \n");
     }
 }
 
@@ -373,3 +418,33 @@ void MainWindow::on_horizontalSlider_Aperture_valueChanged(int value)
     ui->label_valueAperture->setText(QString::number(value));
 }
 
+
+void MainWindow::on_horizontalSlider_Brightness_valueChanged(int value)
+{
+    ui->label_valueBright->setText(QString::number(value));
+
+    // Get current contrast
+    int contrast = ui->label_valueConstrast->text().toInt();
+
+    if(!m_imageDenoizer.bApplyImageEditing(value, contrast))
+    {
+        QMessageBox::warning(this,"Error",
+                             "Error while updating brightness!\n"
+                             "Check parameters\n");
+    }
+}
+
+void MainWindow::on_horizontalSlider_Constrast_valueChanged(int value)
+{
+    ui->label_valueConstrast->setText(QString::number(value));
+
+    // Get current brightness
+    int brightness = ui->label_valueBright->text().toInt();
+
+    if(!m_imageDenoizer.bApplyImageEditing(brightness, value))
+    {
+        QMessageBox::warning(this,"Error",
+                             "Error while updating contrast!\n"
+                             "Check parameters\n");
+    }
+}

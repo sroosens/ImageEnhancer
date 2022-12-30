@@ -18,7 +18,8 @@ public:
     ~MainWindow();
 
 public slots:
-    void updateImage(const QImage image);
+    void updateDenoizeImage(const QImage image);
+    void updateEditedImage(const QImage image);
 
 private slots:
     void on_pushButtonRun_clicked();
@@ -28,6 +29,10 @@ private slots:
     void on_horizontalSlider_KernelWidth_valueChanged(int value);
     void on_horizontalSlider_KernelHeight_valueChanged(int value);
     void on_horizontalSlider_Aperture_valueChanged(int value);
+
+    void on_horizontalSlider_Brightness_valueChanged(int value);
+
+    void on_horizontalSlider_Constrast_valueChanged(int value);
 
 private:
     Ui::MainWindow *ui;
@@ -41,6 +46,7 @@ private:
 
     QString             m_curFileName;
     ImageDenoizeAPI     m_imageDenoizer;
+    QImage              m_curImg;
     QImage              m_denoizedImg;
 };
 

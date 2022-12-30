@@ -38,9 +38,15 @@ public slots:
     void start(void) { bRunning = true; QThread::start(); }
     void stop(void) { bRunning = false; QThread::exit(); }
 
-    // Denoize process
-    bool bApplyDenoize(QString _file, ProcessType _type, ProcessParameters _params);
-    bool bApplyDenoize(QString _file, ProcessType _type, ProcessParameters _params, QImage &_out);
+    // Load image
+    bool bLoadImage(QString _file);
+
+    // Image processes
+    bool bApplyImageEditing(int _brigthness, int _contrast);
+    bool bApplyDenoize(ProcessType _type, ProcessParameters _params);
+
+    // Getter
+    QImage GetImage();
 
     // Save file
     bool bSaveImage(QString _file, QImage _image);
@@ -51,13 +57,16 @@ private slots:
     void run();
 
 signals:
-    void updatedImg(const QImage &_frame);
+    void updatedDenoizeImg(const QImage &_frame);
+    void updatedEditedImg(const QImage &_frame);
 
 private:
-    bool bCheckParams(ProcessType _type, ProcessParameters &_params);
+    bool bCheckDenoizeParams(ProcessType _type, ProcessParameters &_params);
+    bool bCheckImageEditingValues(int _brightness, int _contrast);
     bool bIsOdd(int _num);
-    bool bDenoize(QString _file, ProcessType _type, ProcessParameters _params, QImage &_output);
 
+    cv::Mat m_originalImg;
+    cv::Mat m_curImg;
     bool bRunning;
 };
 

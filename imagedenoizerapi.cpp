@@ -15,6 +15,26 @@ ImageDenoizeAPI::~ImageDenoizeAPI()
 {
 }
 
+bool ImageDenoizeAPI::bLoadImage(QString _file)
+{
+    cv::Mat input;
+
+    input = cv::imread(_file.toStdString());
+
+    if(input.empty())
+    {
+        qDebug() << "Error while loading file into Object Mat!";
+        return false;
+    }
+
+    // Store original image (used as base reference)
+    m_originalImg = input;
+    // Set current image as initial
+    m_curImg = m_originalImg.clone();
+
+    return true;
+}
+
 void ImageDenoizeAPI::run()
 {
     while(bRunning)
@@ -28,27 +48,49 @@ void ImageDenoizeAPI::run()
 /**
 *************************************************************************
 @verbatim
-+ bDenoize() - Apply Denoizing process to image using type and parameters and
-+              transfer the result via signal
++ bApplyImageEditing() - Apply Brightness & Constrat to an image. The result
++                        is transferred via signal
 + ----------------
-+ Parameters : file     string containing filename
-+              type     type of denoizing process
-+              params   parameters related to the requested type
-+              out      image to fill with rendered frame
++ Parameters : _brightness brightness value between 1 and 200
++              _contrast   constrast value between 1 and 200
 + Returns    : TRUE if success; FALSE otherwise
 @endverbatim
 ***************************************************************************/
-bool ImageDenoizeAPI::bApplyDenoize(QString _file, ProcessType _type, ProcessParameters _params)
+bool ImageDenoizeAPI::bApplyImageEditing(int _brigthness, int _contrast)
 {
     bool bOK = true;
-    QImage output;
+    cv::Mat tmp;
+    cv::Mat out;
 
-    bOK = bDenoize(_file, _type, _params, output);
-
-    if(bOK && !output.isNull())
+    if(m_originalImg.empty())
     {
-        // Transmit denoized image to who is interested
-        emit updatedImg(output);
+        qDebug() << "Error while loading file into Object Mat!";
+        return false;
+    }
+
+    // Get original image
+    m_curImg = m_originalImg.clone();
+
+    // Check if request brightness value is valid
+    if(!bCheckImageEditingValues(_brigthness, _contrast))
+    {
+        qDebug() << __func__ << " Bad brightness value!";
+        return false;
+    }
+
+    // Increase/Decrease brightness & contrast
+    m_curImg.convertTo(tmp, -1, ((double)_contrast / 100), _brigthness - 100);
+
+    // Update current image
+    m_curImg = tmp.clone();
+
+    // Change coding order from BGR to RGB
+    cv::cvtColor(tmp, out, cv::COLOR_BGR2RGB);
+
+    if(bOK && !out.empty())
+    {
+        // Transmit processed image to who is interested
+        emit updatedEditedImg(QImage(out.data, out.cols, out.rows, out.step, QImage::Format_RGB888).copy());
     }
 
     return bOK;
@@ -57,30 +99,82 @@ bool ImageDenoizeAPI::bApplyDenoize(QString _file, ProcessType _type, ProcessPar
 /**
 *************************************************************************
 @verbatim
-+ bDenoize() - Apply Denoizing process to image using type and parameters and
-+              transfer the result in passed arg
++ bApplyDenoize() - Apply Denoizing process to current image using type and parameters and
++              transfer the result via signal
 + ----------------
-+ Parameters : file     string containing filename
-+              type     type of denoizing process
++ Parameters : type     type of denoizing process
 +              params   parameters related to the requested type
-+              out      image to fill with rendered frame
 + Returns    : TRUE if success; FALSE otherwise
 @endverbatim
 ***************************************************************************/
-bool ImageDenoizeAPI::bApplyDenoize(QString _file, ProcessType _type, ProcessParameters _params, QImage &_out)
+bool ImageDenoizeAPI::bApplyDenoize(ProcessType _type, ProcessParameters _params)
 {
     bool bOK = true;
-    QImage output;
+    cv::Mat in;
+    cv::Mat tmp;
+    cv::Mat out;
 
-    bOK = bDenoize(_file, _type, _params, output);
-
-    if(bOK && !output.isNull())
+    if(m_curImg.empty())
     {
-        // Fill output passed in arg
-        _out = output.copy();
+        qDebug() << "Error while loading file into Object Mat!";
+        return false;
+    }
+
+    // Check if encoded parameters are in range & make them odd
+    if(!bCheckDenoizeParams(_type, _params))
+    {
+        qDebug() << __func__ << " Bad parameters!";
+        return false;
+    }
+
+    // Get current image
+    in = m_curImg.clone();
+
+    // Apply Denoizing type
+    switch(_type)
+    {
+    case TypeGaussianBlur:
+        qDebug() << "Apply GaussianBlur Denoizing type";
+        cv::GaussianBlur(in, tmp, cv::Size(_params.kernelSizeWidth, _params.kernelSizeHeight), (float)(_params.sigma / 10));
+        break;
+    case TypeMedianBlur:
+        qDebug() << "Apply MedianBlur Denoizing type";
+        cv::medianBlur(in, tmp, _params.aperture);
+        break;
+    case TypeNlMeans:
+        qDebug() << "Apply NlMeans Denoizing type";
+        cv::fastNlMeansDenoisingColored(in, tmp);
+        break;
+    default:
+        qDebug() << __func__ << " Unkown type!";
+        bOK = false;
+        break;
+    }
+
+    // Change coding order from BGR to RGB
+    cv::cvtColor(tmp, out, cv::COLOR_BGR2RGB);
+
+    if(bOK && !out.empty())
+    {
+        // Transmit denoized image to who is interested
+        emit updatedDenoizeImg(QImage(out.data, out.cols, out.rows, out.step, QImage::Format_RGB888).copy());
     }
 
     return bOK;
+}
+
+/**
+*************************************************************************
+@verbatim
++ GetImage() - Return current modified image into a QImage
++ ----------------
++ Parameters : NONE
++ Returns    : QImage the current modified image
+@endverbatim
+***************************************************************************/
+QImage ImageDenoizeAPI::GetImage()
+{
+    return QImage(m_curImg.data, m_curImg.cols, m_curImg.rows, m_curImg.step, QImage::Format_RGB888).copy();
 }
 
 /**
@@ -113,15 +207,15 @@ bool ImageDenoizeAPI::bSaveImage(QString _file, QImage _image)
 /**
 *************************************************************************
 @verbatim
-+ bCheckParams() - Checks input parameters related to the current denoizing type.
++ bCheckDenoizeParams() - Checks input parameters related to the current denoizing type.
 +                  If requested parameters are not odd, make them odd
 + ----------------
-+ Parameters : file     string containing filename
++ Parameters : type     denoizing process type
 +              params   reference to parameters related to the requested type
 + Returns    : TRUE if params are OK; FALSE otherwise
 @endverbatim
 ***************************************************************************/
-bool ImageDenoizeAPI::bCheckParams(ProcessType _type, ProcessParameters &params)
+bool ImageDenoizeAPI::bCheckDenoizeParams(ProcessType _type, ProcessParameters &params)
 {
     bool bOK = false;
 
@@ -171,6 +265,29 @@ bool ImageDenoizeAPI::bCheckParams(ProcessType _type, ProcessParameters &params)
 /**
 *************************************************************************
 @verbatim
++ bCheckImageEditingValues() - Checks input brightness & contrast values
++ ----------------
++ Parameters : brightness value of the brightness
++              constrast value of the constrast
++ Returns    : TRUE if params are OK; FALSE otherwise
+@endverbatim
+***************************************************************************/
+bool ImageDenoizeAPI::bCheckImageEditingValues(int _brightness, int _contrast)
+{
+    bool bOK = true;
+
+    if( (_brightness < 1) || (_brightness > 200) )
+        bOK = false;
+
+    if( (_contrast < 1) || (_contrast > 200) )
+        bOK = false;
+
+    return bOK;
+}
+
+/**
+*************************************************************************
+@verbatim
 + bCheckParams() - Checks if input integer is an odd number
 + ----------------
 + Parameters : num    input number
@@ -190,67 +307,3 @@ bool ImageDenoizeAPI::bIsOdd(int _num)
 
   return odd;
 }
-
-/**
-*************************************************************************
-@verbatim
-+ bDenoize() - Denoize image using type and parameters and
-+              transfer the result in passed arg
-+ ----------------
-+ Parameters : file     string containing filename
-+              type     type of denoizing process
-+              params   parameters related to the requested type
-+              out      image to fill with rendered frame
-+ Returns    : TRUE if success; FALSE otherwise
-@endverbatim
-***************************************************************************/
-bool ImageDenoizeAPI::bDenoize(QString _file, ProcessType _type, ProcessParameters _params, QImage &_output)
-{
-    cv::Mat input;
-    cv::Mat tmp;
-    cv::Mat output;
-
-    input = cv::imread(_file.toStdString());
-
-    if(input.empty())
-    {
-        qDebug() << "Error while loading file into Object Mat!";
-        return false;
-    }
-
-    // Check if encoded parameters are in range & make them odd
-    if(!bCheckParams(_type, _params))
-    {
-        qDebug() << __func__ << " Bad parameters!";
-        return false;
-    }
-
-    // Apply Denoizing type
-    switch(_type)
-    {
-    case TypeGaussianBlur:
-        qDebug() << "Apply GaussianBlur Denoizing type";
-        cv::GaussianBlur(input, tmp, cv::Size(_params.kernelSizeWidth, _params.kernelSizeHeight), (float)(_params.sigma / 10));
-        break;
-    case TypeMedianBlur:
-        qDebug() << "Apply MedianBlur Denoizing type";
-        cv::medianBlur(input, tmp, _params.aperture);
-        break;
-    case TypeNlMeans:
-        qDebug() << "Apply NlMeans Denoizing type";
-        cv::fastNlMeansDenoisingColored(input, tmp);
-        break;
-    default:
-        qDebug() << __func__ << " Unkown type!";
-        return false;
-        break;
-    }
-
-    // Change coding order from BGR to RGB
-    cv::cvtColor(tmp, output, cv::COLOR_BGR2RGB);
-
-    _output = QImage(output.data, output.cols, output.rows, output.step, QImage::Format_RGB888).copy();
-
-    return true;
-}
-
