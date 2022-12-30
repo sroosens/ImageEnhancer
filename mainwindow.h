@@ -34,6 +34,10 @@ private slots:
 
     void on_horizontalSlider_Constrast_valueChanged(int value);
 
+    void on_horizontalSlider_Hue_valueChanged(int value);
+
+    void on_horizontalSlider_Saturation_valueChanged(int value);
+
 private:
     Ui::MainWindow *ui;
 

@@ -23,6 +23,8 @@ MainWindow::MainWindow(QWidget *parent) :
     ui->pushButtonSave->setEnabled(false);
     ui->horizontalSlider_Brightness->setEnabled(false);
     ui->horizontalSlider_Constrast->setEnabled(false);
+    ui->horizontalSlider_Hue->setEnabled(false);
+    ui->horizontalSlider_Saturation->setEnabled(false);
     disableParamsUI();
 
     // Setup specific thread for image processing
@@ -140,6 +142,9 @@ void MainWindow::dropEvent(QDropEvent *e)
             // Set a scaled pixmap to a w x h window keeping its aspect ratio
             ui->labelImgPrevious->setPixmap(QPixmap(m_curFileName).scaled(w, h, Qt::KeepAspectRatio));
 
+            // Enable Denoize sliders
+            on_comboBoxDenoiseType_currentIndexChanged(ui->comboBoxDenoiseType->currentIndex());
+
             // Set local image
             if(!m_imageDenoizer.bLoadImage(m_curFileName))
             {
@@ -150,14 +155,20 @@ void MainWindow::dropEvent(QDropEvent *e)
             }
             else
             {
-                // Reset slider values
-                ui->horizontalSlider_Brightness->setValue(100);
-                ui->horizontalSlider_Constrast->setValue(100);
                 // Enable Editing sliders
                 ui->horizontalSlider_Brightness->setEnabled(true);
                 ui->horizontalSlider_Constrast->setEnabled(true);
-                // Enable Denoize sliders
-                on_comboBoxDenoiseType_currentIndexChanged(ui->comboBoxDenoiseType->currentIndex());
+                ui->horizontalSlider_Hue->setEnabled(false);
+                ui->horizontalSlider_Saturation->setEnabled(false);
+
+                // Update UI to current image hue and saturation values
+                ui->label_valueHue->setText(QString::number(m_imageDenoizer.GetImageHue()));
+                ui->label_valueSaturation->setText(QString::number(m_imageDenoizer.GetImageSaturation()));
+                ui->horizontalSlider_Hue->setValue(m_imageDenoizer.GetImageHue());
+                ui->horizontalSlider_Saturation->setValue(m_imageDenoizer.GetImageSaturation());
+
+                ui->horizontalSlider_Brightness->setValue(100);
+                ui->horizontalSlider_Constrast->setValue(100);
             }
 
             // Enable denoize button
@@ -423,10 +434,12 @@ void MainWindow::on_horizontalSlider_Brightness_valueChanged(int value)
 {
     ui->label_valueBright->setText(QString::number(value));
 
-    // Get current contrast
+    // Get current params
     int contrast = ui->label_valueConstrast->text().toInt();
+    int hue = ui->label_valueHue->text().toInt();
+    int saturation = ui->label_valueSaturation->text().toInt();
 
-    if(!m_imageDenoizer.bApplyImageEditing(value, contrast))
+    if(!m_imageDenoizer.bApplyImageEditing(value, contrast, hue, saturation))
     {
         QMessageBox::warning(this,"Error",
                              "Error while updating brightness!\n"
@@ -438,13 +451,49 @@ void MainWindow::on_horizontalSlider_Constrast_valueChanged(int value)
 {
     ui->label_valueConstrast->setText(QString::number(value));
 
-    // Get current brightness
+    // Get current params
     int brightness = ui->label_valueBright->text().toInt();
+    int hue = ui->label_valueHue->text().toInt();
+    int saturation = ui->label_valueSaturation->text().toInt();
 
-    if(!m_imageDenoizer.bApplyImageEditing(brightness, value))
+    if(!m_imageDenoizer.bApplyImageEditing(brightness, value, hue, saturation))
     {
         QMessageBox::warning(this,"Error",
                              "Error while updating contrast!\n"
+                             "Check parameters\n");
+    }
+}
+
+void MainWindow::on_horizontalSlider_Hue_valueChanged(int value)
+{
+    ui->label_valueHue->setText(QString::number(value));
+
+    // Get current params
+    int brightness = ui->label_valueBright->text().toInt();
+    int saturation = ui->label_valueSaturation->text().toInt();
+    int contrast = ui->label_valueConstrast->text().toInt();
+
+    if(!m_imageDenoizer.bApplyImageEditing(brightness, contrast, value, saturation))
+    {
+        QMessageBox::warning(this,"Error",
+                             "Error while updating hue!\n"
+                             "Check parameters\n");
+    }
+}
+
+void MainWindow::on_horizontalSlider_Saturation_valueChanged(int value)
+{
+    ui->label_valueSaturation->setText(QString::number(value));
+
+    // Get current params
+    int brightness = ui->label_valueBright->text().toInt();
+    int hue = ui->label_valueHue->text().toInt();
+    int contrast = ui->label_valueConstrast->text().toInt();
+
+    if(!m_imageDenoizer.bApplyImageEditing(brightness, contrast, hue, value))
+    {
+        QMessageBox::warning(this,"Error",
+                             "Error while updating saturation!\n"
                              "Check parameters\n");
     }
 }

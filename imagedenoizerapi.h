@@ -42,11 +42,13 @@ public slots:
     bool bLoadImage(QString _file);
 
     // Image processes
-    bool bApplyImageEditing(int _brigthness, int _contrast);
+    bool bApplyImageEditing(int _brigthness, int _contrast, int _hue, int _saturation);
     bool bApplyDenoize(ProcessType _type, ProcessParameters _params);
 
     // Getter
     QImage GetImage();
+    int GetImageSaturation();
+    int GetImageHue();
 
     // Save file
     bool bSaveImage(QString _file, QImage _image);
@@ -62,7 +64,7 @@ signals:
 
 private:
     bool bCheckDenoizeParams(ProcessType _type, ProcessParameters &_params);
-    bool bCheckImageEditingValues(int _brightness, int _contrast);
+    bool bCheckImageEditingValues(int _brightness, int _contrast, int _hue, int _saturation);
     bool bIsOdd(int _num);
 
     cv::Mat m_originalImg;
