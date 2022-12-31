@@ -15,6 +15,15 @@ ImageDenoizeAPI::~ImageDenoizeAPI()
 {
 }
 
+/**
+*************************************************************************
+@verbatim
++ bLoadImage() - Load the target image into the API
++ ----------------
++ Parameters : _file the path of the target image
++ Returns    : TRUE if success; FALSE otherwise
+@endverbatim
+***************************************************************************/
 bool ImageDenoizeAPI::bLoadImage(QString _file)
 {
     cv::Mat input;
@@ -210,6 +219,16 @@ QImage ImageDenoizeAPI::GetImage()
     return QImage(m_curImg.data, m_curImg.cols, m_curImg.rows, m_curImg.step, QImage::Format_RGB888).copy();
 }
 
+/**
+*************************************************************************
+@verbatim
++ GetImageSaturation() - Return the mean saturation level of the current
++                        loaded image
++ ----------------
++ Parameters : NONE
++ Returns    : int the mean saturation level
+@endverbatim
+***************************************************************************/
 int ImageDenoizeAPI::GetImageSaturation()
 {
     // Convert the image to the HSV color space
@@ -231,6 +250,16 @@ int ImageDenoizeAPI::GetImageSaturation()
     return meanSaturation[0];
 }
 
+/**
+*************************************************************************
+@verbatim
++ GetImageHue() - Return the mean hue level of the current
++                        loaded image
++ ----------------
++ Parameters : NONE
++ Returns    : int the mean hue level
+@endverbatim
+***************************************************************************/
 int ImageDenoizeAPI::GetImageHue()
 {
     // Convert the image to the HSV color space
